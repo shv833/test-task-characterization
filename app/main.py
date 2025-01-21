@@ -20,7 +20,6 @@ def index():
             session["uploaded_files"] = None
 
         session["uploaded_files"] = file_decoded
-        print(f"file_decoded {file_decoded}")
 
         return render_template("index.html", data=session["uploaded_files"])
 

@@ -45,7 +45,6 @@ def decode_binary_file(file_stream) -> list:
 
 def encode_data_to_binary_file(data, output_stream):
     cleared_data = [{k: v for k, v in i.items() if v is not None} for i in data]
-    print(cleared_data)
     for item in cleared_data:
         header = item.get("header", "").encode("ascii")
         output_stream.write(header.ljust(4, b"\x00"))
