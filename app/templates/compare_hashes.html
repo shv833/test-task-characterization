@@ -1,0 +1,42 @@
+<form id="hashForm">
+    <div>
+        <label for="file1">Upload File 1:</label>
+        <input type="file" id="file1" name="file1" accept="*/*">
+    </div>
+    <div>
+        <label for="file2">Upload File 2:</label>
+        <input type="file" id="file2" name="file2" accept="*/*">
+    </div>
+    <button type="submit">Compare Hashes</button>
+</form>
+<div id="hash1" style="margin-top: 20px;"></div>
+<div id="hash2"></div>
+<div id="result" style="margin-top: 20px; font-weight: bold;"></div>
+
+<script>
+    document.getElementById("hashForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        const formData = new FormData();
+        formData.append("file1", document.getElementById("file1").files[0]);
+        formData.append("file2", document.getElementById("file2").files[0]);
+
+        const response = await fetch("/compare_hashes", {
+            method: "POST",
+            body: formData,
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            document.getElementById("hash1").textContent = `Hash of File 1: ${result.hash1}`;
+            document.getElementById("hash2").textContent = `Hash of File 2: ${result.hash2}`;
+            const matchText = result.match
+                ? "The hashes match! The files are the same."
+                : "The hashes do not match. The files are different.";
+            document.getElementById("result").textContent = matchText;
+            document.getElementById("result").style.color = result.match ? "green" : "red";
+        } else {
+            alert(result.error || "An error occurred.");
+        }
+    });
+</script>

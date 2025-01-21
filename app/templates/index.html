@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Characterization</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        form {
+            margin-bottom: 20px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        button {
+            padding: 10px 15px;
+            font-size: 14px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f4f4f4;
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        input:disabled {
+            background-color: #ffe7e7;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+    <script>
+        function toggleView() {
+            const jsonView = document.querySelector('.json-view');
+            const tableView = document.querySelector('.table-view');
+            const switchButton = document.querySelector('#viewSwitch');
+
+            if (jsonView.classList.contains('hidden')) {
+                jsonView.classList.remove('hidden');
+                tableView.classList.add('hidden');
+                switchButton.textContent = "Show Table View";
+            } else {
+                jsonView.classList.add('hidden');
+                tableView.classList.remove('hidden');
+                switchButton.textContent = "Show JSON View";
+            }
+        }
+
+        function handleInput(input) {
+            if (input.value === '') {
+                input.dataset.erased = "true";
+            } else {
+                delete input.dataset.erased;
+            }
+        }
+
+        function handleBlur(input) {
+            if (input.dataset.erased && !input.disabled) {
+                input.value = 0;
+                delete input.dataset.erased;
+            }
+        }
+
+        function redirectToCompareHashes() {
+            window.location.href = '/compare_hashes';
+        }
+
+        function saveChanges() {
+            const rows = document.querySelectorAll(".data-row");
+            const updatedData = [];
+
+            rows.forEach(row => {
+                const header = row.querySelector(".header").textContent.trim();
+                const temperature = parseFloat(row.querySelector('input[name="temperature"]')?.value) || null;
+                const operator = row.querySelector('input[name="operator"]')?.value || null;
+                const partNumber = parseInt(row.querySelector('input[name="part_number"]')?.value) || null;
+                const status = parseInt(row.querySelector('input[name="status"]')?.value) || null;
+                const testName = row.querySelector('input[name="test_name"]')?.value || null;
+                const testValue = parseFloat(row.querySelector('input[name="test_value"]')?.value) || null;
+                const lowLimit = parseFloat(row.querySelector('input[name="low_limit"]')?.value) || null;
+                const highLimit = parseFloat(row.querySelector('input[name="high_limit"]')?.value) || null;
+
+                updatedData.push({
+                    header,
+                    temperature,
+                    operator,
+                    part_number: partNumber,
+                    status,
+                    test_name: testName,
+                    test_value: testValue,
+                    low_limit: lowLimit,
+                    high_limit: highLimit
+                });
+            });
+
+            fetch("/save", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ data: updatedData })
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                }
+                throw new Error("Failed to save data");
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "updated_data.bin";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            })
+            .catch(error => {
+                console.error(error);
+                alert("An error occurred while saving changes");
+            });
+        }
+    </script>
+</head>
+<body>
+    <form action="/" method="post" enctype="multipart/form-data">
+        <div style="margin: 20px;">
+            <input type="file" name="file_to_decode" id="file_to_decode" required>
+        </div>
+        <div style="margin: 20px;">
+            <button type="submit">Upload file</button>
+        </div>
+    </form>
+
+    {% if data %}
+    <h2>Decoded Data</h2>
+    <form action="/clear" method="post">
+        <button id="viewSwitch" onclick="toggleView()" type="button">Show JSON View</button>
+        <button type="button" onclick="saveChanges()">Save Changes</button>
+        <button type="button" onclick="redirectToCompareHashes()">Compare Files' Hashes</button>
+        <button type="submit">Clear session</button>
+    </form>
+
+    <div class="table-view">
+        <table>
+            <thead>
+                <tr>
+                    <th>Header</th>
+                    <th>Temperature</th>
+                    <th>Operator</th>
+                    <th>Part Number</th>
+                    <th>Status</th>
+                    <th>Test Name</th>
+                    <th>Test Value</th>
+                    <th>Low Limit</th>
+                    <th>High Limit</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in data %}
+                <tr class="data-row">
+                    <td class="header">{{ item.header }}</td>
+                    <td>
+                        <input type="number" step="any" name="temperature" 
+                            value="{{ item.temperature or 0 if item.header in ['MIR'] else '' }}" 
+                            {% if item.header not in ["MIR"] %} disabled {% endif %}
+                            oninput="handleInput(this)"
+                            onblur="handleBlur(this)">
+                    </td>
+                    <td>
+                        <input type="text" name="operator" 
+                            value="{{ item.operator or '' if item.header in ['MIR'] else '' }}" 
+                            {% if item.header not in ["MIR"] %} disabled {% endif %}>
+                    </td>
+                    <td>
+                        <input type="number" name="part_number" 
+                            value="{{ item.part_number or 0 if item.header in ['PRR'] else '' }}" 
+                            {% if item.header not in ["PRR"] %} disabled {% endif %}
+                            oninput="handleInput(this)"
+                            onblur="handleBlur(this)">
+                    </td>
+                    <td>
+                        <input type="number" name="status" 
+                            value="{{ item.status or 0 if item.header in ['PRR', 'PTR'] else '' }}" 
+                            {% if item.header not in ["PRR", "PTR"] %} disabled {% endif %}
+                            oninput="handleInput(this)"
+                            onblur="handleBlur(this)">
+                    </td>
+                    <td>
+                        <input type="text" name="test_name" 
+                            value="{{ item.test_name or '' if item.header in ['PTR'] else '' }}" 
+                            {% if item.header not in ["PTR"] %} disabled {% endif %}>
+                    </td>
+                    <td>
+                        <input type="number" step="any" name="test_value" 
+                            value="{{ item.test_value or 0 if item.header in ['PTR'] else '' }}" 
+                            {% if item.header not in ["PTR"] %} disabled {% endif %}
+                            oninput="handleInput(this)"
+                            onblur="handleBlur(this)">
+                    </td>
+                    <td>
+                        <input type="number" step="any" name="low_limit" 
+                            value="{{ item.low_limit or 0 if item.header in ['PTR'] else '' }}" 
+                            {% if item.header not in ["PTR"] %} disabled {% endif %}
+                            oninput="handleInput(this)"
+                            onblur="handleBlur(this)">
+                    </td>
+                    <td>
+                        <input type="number" step="any" name="high_limit" 
+                            value="{{ item.high_limit or 0 if item.header in ['PTR'] else '' }}" 
+                            {% if item.header not in ["PTR"] %} disabled {% endif %}
+                            oninput="handleInput(this)"
+                            onblur="handleBlur(this)">
+                    </td>
+                </tr>
+                {% endfor %}
+
+            </tbody>
+        </table>
+    </div>
+
+    <div class="json-view hidden">
+        <pre>{{ data | tojson(indent=2) }}</pre>
+    </div>
+    {% endif %}
+</body>
+</html>
